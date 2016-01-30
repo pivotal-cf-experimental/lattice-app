@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+	"strconv"
 	"sync"
 	"time"
 
@@ -91,6 +93,11 @@ func fetchAppName() string {
 }
 
 func getServerPorts() []string {
+	cfInstancePorts := getCfInstancePorts()
+	if len(cfInstancePorts) > 0 {
+		return cfInstancePorts
+	}
+
 	givenPorts := *portsFlag
 	if givenPorts == "" {
 		givenPorts = os.Getenv("PORT")
@@ -100,4 +107,26 @@ func getServerPorts() []string {
 	}
 	ports := strings.Replace(givenPorts, " ", "", -1)
 	return strings.Split(ports, ",")
+}
+
+type PortMap struct {
+	External int
+	Internal int
+}
+
+func getCfInstancePorts() []string {
+	givenPorts := os.Getenv("CF_INSTANCE_PORTS")
+	if givenPorts == "" {
+		return []string{}
+	}
+
+	portMaps := []PortMap{}
+	json.Unmarshal([]byte(givenPorts), &portMaps)
+
+	internalPorts := []string{}
+
+	for _, portMap := range portMaps {
+		internalPorts = append(internalPorts, strconv.Itoa(portMap.Internal))
+	}
+	return internalPorts
 }
